@@ -6,6 +6,7 @@ from pymongo import MongoClient
 from pydantic import BaseModel
 from reportlab.lib.pagesizes import A6
 from reportlab.pdfgen import canvas
+from reportlab.lib.colors import HexColor
 import urllib.parse
 import os
 import uuid
@@ -95,17 +96,65 @@ def generate_id_card(candidate):
     c = canvas.Canvas(pdf_path, pagesize=A6)
     width, height = A6
 
-    c.setFont("Helvetica-Bold", 14)
-    c.drawCentredString(width/2, height-30, "MEMBERSHIP ID CARD")
+    # 🎨 Colors
+    GREEN = HexColor("#1B5E20")
+    LIGHT_GREEN = HexColor("#E8F5E9")
+    WHITE = HexColor("#FFFFFF")
 
-    if candidate.get("photo"):
-        c.drawImage(candidate["photo"], 20, height-140, 80, 100)
+    # 🔲 Background
+    c.setFillColor(LIGHT_GREEN)
+    c.rect(0, 0, width, height, fill=1)
+
+    # 🟩 Header
+    c.setFillColor(GREEN)
+    c.rect(0, height - 50, width, 50, fill=1)
+
+    # 🏷 Title
+    c.setFillColor(WHITE)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(width / 2, height - 32, "PASUMAI BHARATAM")
 
     c.setFont("Helvetica", 10)
-    c.drawString(110, height-60, f"Name: {candidate['name']}")
-    c.drawString(110, height-80, f"Mobile: {candidate['mobile']}")
-    c.drawString(110, height-100, f"District: {candidate['district']}")
-    c.drawString(110, height-120, f"State: {candidate['state']}")
+    c.drawCentredString(width / 2, height - 45, "MEMBERSHIP ID CARD")
+
+    # 📷 Photo box
+    if candidate.get("photo"):
+        try:
+            c.drawImage(
+                candidate["photo"],
+                15,
+                height - 160,
+                80,
+                100,
+                mask='auto'
+            )
+        except:
+            pass
+
+    # 📄 Details
+    c.setFillColor(GREEN)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(110, height - 80, "Name:")
+    c.drawString(110, height - 100, "Mobile:")
+    c.drawString(110, height - 120, "District:")
+    c.drawString(110, height - 140, "State:")
+
+    c.setFont("Helvetica", 9)
+    c.drawString(160, height - 80, candidate["name"])
+    c.drawString(160, height - 100, candidate["mobile"])
+    c.drawString(160, height - 120, candidate["district"])
+    c.drawString(160, height - 140, candidate["state"])
+
+    # 🧾 ID Number
+    c.setFont("Helvetica-Bold", 8)
+    c.drawString(15, 40, f"ID: PB-{candidate['mobile']}")
+
+    # 🟩 Footer
+    c.setStrokeColor(GREEN)
+    c.line(10, 30, width - 10, 30)
+
+    c.setFont("Helvetica-Oblique", 8)
+    c.drawCentredString(width / 2, 18, "Service • Integrity • Growth")
 
     c.showPage()
     c.save()
