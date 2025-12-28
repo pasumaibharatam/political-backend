@@ -15,7 +15,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000","https://pasumaibharatam.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,12 +27,12 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(IDCARD_DIR, exist_ok=True)
 
 # -------------------- MongoDB --------------------
-USERNAME = "pasumaibharatam_db_user"
-PASSWORD = urllib.parse.quote_plus("pasumai123")
-CLUSTER = "pasumai.mrsonfr.mongodb.net"
+# USERNAME = "pasumaibharatam_db_user"
+# PASSWORD = urllib.parse.quote_plus("pasumai123")
+# CLUSTER = "pasumai.mrsonfr.mongodb.net"
 
-MONGO_URL = f"mongodb+srv://{USERNAME}:{PASSWORD}@{CLUSTER}/?retryWrites=true&w=majority&appName=Pasumai"
-
+# MONGO_URL = f"mongodb+srv://{USERNAME}:{PASSWORD}@{CLUSTER}/?retryWrites=true&w=majority&appName=Pasumai"
+MONGO_URL = os.getenv("MONGO_URL")
 client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=3000,
     connectTimeoutMS=3000,
      tls=True)
