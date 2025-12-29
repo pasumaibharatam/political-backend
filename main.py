@@ -280,20 +280,19 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/idcards", StaticFiles(directory=IDCARD_DIR), name="idcards")
 
 @app.get("/admin")
-def get_all_candidates(token: str = Depends(verify_admin)):
-    candidates = list(candidates_collection.find(
-        {},
-        {
-            "_id": 1,
-            "name": 1,
-            "mobile": 1,
-            "district": 1,
-            "state": 1,
-            "gender": 1,
-            "age": 1
-        }
-    ))
+def get_all_candidates(token: str = Header(None)):
+    if token != "secure-admin-token":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    candidates = list(
+        candidates_collection.find(
+            {},
+            {"_id": 1, "name": 1, "mobile": 1, "district": 1, "state": 1, "gender": 1, "age": 1}
+        )
+    )
+
     for c in candidates:
         c["_id"] = str(c["_id"])
+
     return candidates
 
