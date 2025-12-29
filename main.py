@@ -10,6 +10,11 @@ from reportlab.lib.units import inch
 import os, uuid, urllib.parse
 from datetime import datetime
 from typing import Optional
+from fastapi import Depends, Header
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin@123"   # later move to env
+ADMIN_TOKEN = "PASUMAI_ADMIN_TOKEN"
+
 
 # -------------------- APP --------------------
 app = FastAPI()
@@ -24,6 +29,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.post("/admin/login")
+def admin_login(username: str = Form(...), password: str = Form(...)):
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        return {"token": ADMIN_TOKEN}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+def verify_admin(token: str = Header(None)):
+    if token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
 
 # -------------------- DIRS --------------------
 UPLOAD_DIR = "uploads"
@@ -256,8 +271,20 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/idcards", StaticFiles(directory=IDCARD_DIR), name="idcards")
 
 @app.get("/admin")
-def get_all_candidates():
-    candidates = list(candidates_collection.find({}, {"_id": 1, "name": 1, "mobile": 1, "district": 1, "state": 1}))
+def get_all_candidates(token: str = Depends(verify_admin)):
+    candidates = list(candidates_collection.find(
+        {},
+        {
+            "_id": 1,
+            "name": 1,
+            "mobile": 1,
+            "district": 1,
+            "state": 1,
+            "gender": 1,
+            "age": 1
+        }
+    ))
     for c in candidates:
         c["_id"] = str(c["_id"])
     return candidates
+
