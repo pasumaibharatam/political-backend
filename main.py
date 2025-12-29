@@ -15,7 +15,16 @@ ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin@123"   # later move to env
 ADMIN_TOKEN = "PASUMAI_ADMIN_TOKEN"
 
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
+# Serve the React build
+app.mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend")
+
+@app.exception_handler(404)
+async def custom_404_handler(request, exc):
+    # Always return index.html for unknown routes
+    return FileResponse("frontend/build/index.html")
 # -------------------- APP --------------------
 app = FastAPI()
 
