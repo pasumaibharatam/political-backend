@@ -1,33 +1,23 @@
-from fastapi import FastAPI, Form, UploadFile, File, HTTPException
+from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pymongo import MongoClient
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime, timedelta
+import jwt
+import os, uuid, urllib.parse
+
 from reportlab.lib.pagesizes import A6
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import HexColor
 from reportlab.lib.units import inch
-import os, uuid, urllib.parse
-from datetime import datetime
-from typing import Optional
-from fastapi import Depends, Header
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "admin@123"   # later move to env
-ADMIN_TOKEN = "PASUMAI_ADMIN_TOKEN"
 
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-
-# Serve the React build
-app.mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend")
-
-@app.exception_handler(404)
-async def custom_404_handler(request, exc):
-    # Always return index.html for unknown routes
-    return FileResponse("frontend/build/index.html")
-# -------------------- APP --------------------
+# ===================== APP =====================
 app = FastAPI()
 
+# ===================== CORS =====================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -39,30 +29,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/admin/login")
-def admin_login(data: LoginSchema):
-    if data.username == "admin" and data.password == "1234":
-        token = create_jwt_token({"role": "admin"})
+# ===================== CONFIG =====================
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin@123"   # move to env later
 
-        return {
-            "success": True,
-            "token": token
-        }
+SECRET_KEY = "CHANGE_THIS_SECRET_KEY"
+ALGORITHM = "HS256"
 
-    raise HTTPException(status_code=401, detail="Invalid credentials")
-
-def verify_admin(token: str = Header(None)):
-    if token != ADMIN_TOKEN:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-
-# -------------------- DIRS --------------------
 UPLOAD_DIR = "uploads"
 IDCARD_DIR = "idcards"
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(IDCARD_DIR, exist_ok=True)
 
-# -------------------- DB --------------------
+# ===================== DB =====================
 USERNAME = "pasumaibharatam_db_user"
 PASSWORD = urllib.parse.quote_plus("pasumai123")
 CLUSTER = "pasumai.mrsonfr.mongodb.net"
@@ -74,11 +54,45 @@ db = client["political_db"]
 districts_collection = db["districts"]
 candidates_collection = db["candidates"]
 
-# -------------------- HELPERS --------------------
-def normalize(value):
-    return value if value not in [None, ""] else ""
+# ===================== JWT HELPERS =====================
+def create_jwt_token(data: dict):
+    payload = data.copy()
+    payload["exp"] = datetime.utcnow() + timedelta(hours=6)
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-# -------------------- DISTRICTS --------------------
+def decode_jwt(token: str):
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+# ===================== AUTH =====================
+class LoginSchema(BaseModel):
+    username: str
+    password: str
+
+def verify_admin(authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    token = authorization.replace("Bearer ", "")
+    payload = decode_jwt(token)
+
+    if payload.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    return payload
+
+# ===================== ADMIN LOGIN =====================
+@app.post("/admin/login")
+def admin_login(data: LoginSchema):
+    if data.username == ADMIN_USERNAME and data.password == ADMIN_PASSWORD:
+        token = create_jwt_token({"role": "admin"})
+        return {"token": token}
+
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+# ===================== DISTRICTS =====================
 tamil_nadu_districts = [
     "Ariyalur","Chengalpattu","Chennai","Coimbatore","Cuddalore",
     "Dharmapuri","Dindigul","Erode","Kallakurichi","Kancheepuram",
@@ -100,40 +114,26 @@ async def startup():
             upsert=True
         )
 
-# -------------------- ROUTES --------------------
-@app.get("/")
-def root():
-    return {"status": "Backend running"}
-
 @app.get("/districts")
 def get_districts():
     return list(districts_collection.find({}, {"_id": 0}))
 
-# -------------------- REGISTER --------------------
+# ===================== REGISTER =====================
+def normalize(val):
+    return val if val not in [None, ""] else ""
+
 @app.post("/register")
 async def register(
     name: str = Form(...),
-    father_name: Optional[str] = Form(None),
-    gender: Optional[str] = Form(None),
-    dob: Optional[str] = Form(None),
     age: int = Form(...),
-    blood_group: str = Form(...),
+    gender: Optional[str] = Form(None),
     mobile: str = Form(...),
-    email: Optional[str] = Form(None),
     state: str = Form(...),
     district: str = Form(...),
-    local_body: str = Form(...),
-    nagaram_type: str = Form(...),
-    constituency: Optional[str] = Form(None),
-    ward: Optional[str] = Form(None),
-    address: Optional[str] = Form(None),
-    voter_id: Optional[str] = Form(None),
-    aadhaar: Optional[str] = Form(None),
     photo: UploadFile = File(None)
 ):
-     # ✅ Normalize mobile
-    mobile = str(mobile).strip()
-    if len(mobile) != 10 or not mobile.isdigit():
+    mobile = mobile.strip()
+    if not mobile.isdigit() or len(mobile) != 10:
         raise HTTPException(400, "Invalid mobile number")
 
     if candidates_collection.find_one({"mobile": mobile}):
@@ -148,153 +148,27 @@ async def register(
 
     candidate = {
         "name": name,
-        "father_name": normalize(father_name),
-        "gender": normalize(gender),    
-        "dob": normalize(dob),
         "age": age,
-        "blood_group": blood_group,
+        "gender": normalize(gender),
         "mobile": mobile,
-        "email": normalize(email),
         "state": state,
         "district": district,
-        "local_body": normalize(local_body),
-        "nagaram_type": normalize(nagaram_type),
-        "constituency": normalize(constituency),
-        "ward": normalize(ward),
-        "address": normalize(address),
-        "voter_id": normalize(voter_id),
-        "aadhaar": normalize(aadhaar),
         "photo": photo_path,
         "created_at": datetime.utcnow()
     }
 
     candidates_collection.insert_one(candidate)
-     # ✅ Generate ID card
     generate_id_card(candidate)
 
-    return {
-        "message": "Registration successful",
-        "download_url": f"/download-id/{mobile}"
-    }
-# -------------------- PDF GENERATOR --------------------
-def generate_id_card(candidate):
-    CARD_WIDTH = 3.5 * inch
-    CARD_HEIGHT = 2 * inch
+    return {"message": "Registration successful"}
 
-    pdf_path = f"{IDCARD_DIR}/{candidate['mobile']}.pdf"
-    os.makedirs(IDCARD_DIR, exist_ok=True)
-
-    c = canvas.Canvas(pdf_path, pagesize=(CARD_WIDTH, CARD_HEIGHT))
-
-    # 🎨 Colors
-    DARK_GREEN = HexColor("#1B5E20")
-    LIGHT_GREEN = HexColor("#E8F5E9")
-    WHITE = HexColor("#FFFFFF")
-    GREY = HexColor("#424242")
-
-    # 🔲 Background
-    c.setFillColor(LIGHT_GREEN)
-    c.rect(0, 0, CARD_WIDTH, CARD_HEIGHT, fill=1)
-
-    # 🟩 Left color strip (modern style)
-    c.setFillColor(DARK_GREEN)
-    c.rect(0, 0, 18, CARD_HEIGHT, fill=1)
-
-    # 🏷 Organization Name
-    c.setFillColor(DARK_GREEN)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(30, CARD_HEIGHT - 22, "PASUMAI BHARATAM")
-
-    c.setFont("Helvetica", 7)
-    c.setFillColor(GREY)
-    c.drawString(30, CARD_HEIGHT - 34, "Membership Identity Card")
-
-    # 📷 Photo (right side)
-    if candidate.get("photo") and os.path.exists(candidate["photo"]):
-        try:
-            c.drawImage(
-                candidate["photo"],
-                CARD_WIDTH - 60,
-                CARD_HEIGHT - 70,
-                45,
-                55,
-                mask='auto'
-            )
-        except:
-            pass
-
-    # 📄 Member Details
-    c.setFont("Helvetica-Bold", 7)
-    c.setFillColor(DARK_GREEN)
-    c.drawString(30, CARD_HEIGHT - 60, "Name")
-    c.drawString(30, CARD_HEIGHT - 75, "Mobile")
-    c.drawString(30, CARD_HEIGHT - 90, "District")
-
-    c.setFont("Helvetica", 7)
-    c.setFillColor(GREY)
-    c.drawString(70, CARD_HEIGHT - 60, candidate.get("name", ""))
-    c.drawString(70, CARD_HEIGHT - 75, candidate.get("mobile", ""))
-    c.drawString(70, CARD_HEIGHT - 90, candidate.get("district", ""))
-
-    # 🆔 ID Number (Bottom)
-    c.setFont("Helvetica-Bold", 6)
-    c.setFillColor(DARK_GREEN)
-    c.drawString(30, 18, f"ID: PB-{candidate.get('mobile', '')}")
-
-    # 🌱 Tagline
-    c.setFont("Helvetica-Oblique", 6)
-    c.setFillColor(GREY)
-    c.drawRightString(CARD_WIDTH - 12, 18, "Service • Integrity • Growth")
-
-    c.showPage()
-    c.save()
-
-    return pdf_path
-
-@app.get("/download-id/{mobile}")
-def download_id(mobile: str):
-    mobile = str(mobile).strip()
-
-    # Try both string and int (for OLD DATA)
-    candidate = candidates_collection.find_one(
-        {"mobile": mobile}
-    ) or candidates_collection.find_one(
-        {"mobile": int(mobile)} if mobile.isdigit() else {}
-    )
-
-    if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
-
-    pdf_path = f"{IDCARD_DIR}/{mobile}.pdf"
-
-    # 🔁 Auto-generate if missing
-    if not os.path.exists(pdf_path):
-        generate_id_card(candidate)
-
-    if not os.path.exists(pdf_path):
-        raise HTTPException(
-            status_code=500,
-            detail="ID card generation failed"
-        )
-
-    return FileResponse(
-        pdf_path,
-        filename=f"{mobile}_ID_Card.pdf"
-    )
-
-# -------------------- STATIC --------------------
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-app.mount("/idcards", StaticFiles(directory=IDCARD_DIR), name="idcards")
-
+# ===================== ADMIN DATA =====================
 @app.get("/admin")
-def get_all_candidates(token: str = Header(None)):
-    if token != "secure-admin-token":
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
+def get_all_candidates(admin=Depends(verify_admin)):
     candidates = list(
         candidates_collection.find(
             {},
-            {"_id": 1, "name": 1, "mobile": 1, "district": 1, "state": 1, "gender": 1, "age": 1}
+            {"_id": 1, "name": 1, "mobile": 1, "district": 1, "gender": 1, "age": 1}
         )
     )
 
@@ -303,3 +177,50 @@ def get_all_candidates(token: str = Header(None)):
 
     return candidates
 
+# ===================== ID CARD =====================
+def generate_id_card(candidate):
+    CARD_WIDTH = 3.5 * inch
+    CARD_HEIGHT = 2 * inch
+
+    pdf_path = f"{IDCARD_DIR}/{candidate['mobile']}.pdf"
+    c = canvas.Canvas(pdf_path, pagesize=(CARD_WIDTH, CARD_HEIGHT))
+
+    DARK_GREEN = HexColor("#1B5E20")
+    LIGHT_GREEN = HexColor("#E8F5E9")
+    GREY = HexColor("#424242")
+
+    c.setFillColor(LIGHT_GREEN)
+    c.rect(0, 0, CARD_WIDTH, CARD_HEIGHT, fill=1)
+
+    c.setFillColor(DARK_GREEN)
+    c.rect(0, 0, 18, CARD_HEIGHT, fill=1)
+
+    c.setFont("Helvetica-Bold", 11)
+    c.setFillColor(DARK_GREEN)
+    c.drawString(30, CARD_HEIGHT - 22, "PASUMAI BHARATAM")
+
+    c.setFont("Helvetica", 7)
+    c.setFillColor(GREY)
+    c.drawString(30, CARD_HEIGHT - 35, "Membership Identity Card")
+
+    if candidate.get("photo") and os.path.exists(candidate["photo"]):
+        c.drawImage(candidate["photo"], CARD_WIDTH - 60, CARD_HEIGHT - 70, 45, 55)
+
+    c.setFont("Helvetica", 7)
+    c.drawString(30, CARD_HEIGHT - 60, f"Name: {candidate['name']}")
+    c.drawString(30, CARD_HEIGHT - 75, f"Mobile: {candidate['mobile']}")
+    c.drawString(30, CARD_HEIGHT - 90, f"District: {candidate['district']}")
+
+    c.save()
+
+@app.get("/download-id/{mobile}")
+def download_id(mobile: str):
+    pdf_path = f"{IDCARD_DIR}/{mobile}.pdf"
+    if not os.path.exists(pdf_path):
+        raise HTTPException(404, "ID card not found")
+
+    return FileResponse(pdf_path, filename=f"{mobile}_ID.pdf")
+
+# ===================== STATIC =====================
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.mount("/idcards", StaticFiles(directory=IDCARD_DIR), name="idcards")
