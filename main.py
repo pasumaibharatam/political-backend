@@ -40,10 +40,17 @@ app.add_middleware(
 )
 
 @app.post("/admin/login")
-def admin_login(username: str = Form(...), password: str = Form(...)):
-    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-        return {"token": ADMIN_TOKEN}
+def admin_login(data: LoginSchema):
+    if data.username == "admin" and data.password == "1234":
+        token = create_jwt_token({"role": "admin"})
+
+        return {
+            "success": True,
+            "token": token
+        }
+
     raise HTTPException(status_code=401, detail="Invalid credentials")
+
 def verify_admin(token: str = Header(None)):
     if token != ADMIN_TOKEN:
         raise HTTPException(status_code=401, detail="Unauthorized")
