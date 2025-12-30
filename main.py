@@ -33,7 +33,7 @@ app.add_middleware(
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin@123"   # move to env later
 
-SECRET_KEY = "CHANGE_THIS_SECRET_KEY"
+SECRET_KEY = "pasumai"
 ALGORITHM = "HS256"
 
 UPLOAD_DIR = "uploads"
