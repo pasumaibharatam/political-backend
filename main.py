@@ -32,8 +32,10 @@ app.add_middleware(
 SECRET_KEY = os.getenv("SECRET_KEY")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+print("SECRET_KEY from env:", os.getenv("SECRET_KEY"))
 
 if not SECRET_KEY:
+    
     raise RuntimeError("SECRET_KEY not set")
 
 if not ADMIN_USERNAME or not ADMIN_PASSWORD:
@@ -89,6 +91,9 @@ def verify_admin(authorization: str = Header(None)):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     return payload
+@app.get("/env-check")
+def env_check():
+    return {"secret_loaded": bool(SECRET_KEY)}
 
 # ===================== ADMIN LOGIN =====================
 @app.post("/admin/login")
