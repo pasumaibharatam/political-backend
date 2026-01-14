@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from routes.admin_auth import get_current_admin
-import main  # 👈 import main
+from routes.admin_auth import get_current_admin
+from db import candidates_collection 
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -25,6 +26,6 @@ def dashboard(admin=Depends(get_current_admin)):
 
     return candidates
 
-@router.get("/candidates")
-def get_candidates(admin=Depends(get_current_admin)):
-    return list(main.candidates_collection.find({}, {"_id": 0}))
+# @router.get("/candidates")
+# def get_candidates(admin=Depends(get_current_admin)):
+#     return list(main.candidates_collection.find({}, {"_id": 0}))

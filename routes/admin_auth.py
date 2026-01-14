@@ -2,13 +2,13 @@ from fastapi import APIRouter, HTTPException, Response, Request
 from jose import jwt, JWTError
 from auth import verify_password, create_access_token, hash_password
 from auth import SECRET_KEY, ALGORITHM
-import main  # 👈 IMPORT MAIN
+from db import admins_collection
 
 router = APIRouter(prefix="/admin", tags=["Admin Auth"])
 
 @router.post("/login")
 def admin_login(data: dict, response: Response):
-    admin = main.admins_collection.find_one({"username": data["username"]})
+    admin = admins_collection.find_one({"username": data["username"]})
 
     if not admin or not verify_password(data["password"], admin["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -38,7 +38,7 @@ def create_admin(data: dict):
         "is_active": True
     }
 
-    main.admins_collection.insert_one(admin)
+    admins_collection.insert_one(admin)
     return {"message": "Admin created"}
 
 # ---------- AUTH DEPENDENCY ----------
