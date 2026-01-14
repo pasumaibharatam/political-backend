@@ -4,9 +4,11 @@ from fastapi.staticfiles import StaticFiles
 from pymongo import MongoClient
 import os
 import urllib.parse
+from routes import admin_auth, admin_routes
 
 # ===================== APP =====================
 app = FastAPI()
+
 
 # ===================== CORS =====================
 app.add_middleware(
@@ -40,7 +42,9 @@ MONGO_URL = (
 client = MongoClient(MONGO_URL)
 db = client["political_db"]
 candidates_collection = db["candidates"]
-
+admins_collection = db["admins"]
+app.include_router(admin_auth.router)
+app.include_router(admin_routes.router)
 # ===================== ADMIN PAGE (NO AUTH) =====================
 @app.get("/admin")
 def get_all_candidates():
@@ -66,3 +70,5 @@ def get_all_candidates():
 # ===================== STATIC FILES =====================
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/idcards", StaticFiles(directory=IDCARD_DIR), name="idcards")
+
+
