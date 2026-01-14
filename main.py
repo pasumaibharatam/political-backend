@@ -5,7 +5,7 @@ from pymongo import MongoClient
 import os
 import urllib.parse
 from routes import admin_auth, admin_routes
-
+from db import candidates_collection
 # ===================== APP =====================
 app = FastAPI()
 
