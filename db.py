@@ -14,3 +14,4 @@ client = MongoClient(MONGO_URL)
 db = client["political_db"]
 candidates_collection = db["candidates"]
 admins_collection = db["admins"]
+print("✅ MongoDB connected")

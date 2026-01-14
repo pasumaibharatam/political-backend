@@ -8,17 +8,19 @@ router = APIRouter(prefix="/admin", tags=["Admin Auth"])
 # -------- CREATE ADMIN --------
 @router.post("/create-admin")
 def create_admin(data: dict):
-    if admins_collection.find_one({"username": data["username"]}):
-        raise HTTPException(status_code=400, detail="Admin already exists")
+    try:
+        admin = {
+            "username": data["username"],
+            "password": hash_password(data["password"]),
+            "role": "admin",
+            "is_active": True
+        }
+        admins_collection.insert_one(admin)
+        return {"message": "Admin created"}
+    except Exception as e:
+        print("❌ Error creating admin:", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
-    admin = {
-        "username": data["username"],
-        "password": hash_password(data["password"]),
-        "role": data.get("role", "admin"),
-        "is_active": True
-    }
-    admins_collection.insert_one(admin)
-    return {"message": "Admin created"}
 
 # -------- LOGIN --------
 @router.post("/login")
