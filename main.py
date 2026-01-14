@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 from routes import admin_auth, admin_routes
+from pymongo import MongoClient
 
+import urllib.parse
 app = FastAPI()
 
 # CORS
@@ -14,7 +16,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+USERNAME = "pasumaibharatam_db_user"
+PASSWORD = urllib.parse.quote_plus("pasumai123")
+CLUSTER = "pasumai.mrsonfr.mongodb.net"
 
+MONGO_URL = (
+    f"mongodb+srv://{USERNAME}:{PASSWORD}@{CLUSTER}/"
+    "?retryWrites=true&w=majority"
+)
+
+client = MongoClient(MONGO_URL)
+db = client["political_db"]
+candidates_collection = db["candidates"]
 # Directories
 UPLOAD_DIR = "uploads"
 IDCARD_DIR = "idcards"
