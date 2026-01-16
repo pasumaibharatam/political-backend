@@ -183,27 +183,29 @@ def generate_idcard(mobile: str):
     photo_x = bar_width + 20 * mm
     photo_y = height / 2
 
-    # c.setFillColor(white)
-    # c.circle(photo_x, photo_y, photo_radius, fill=1)
-    # c.setStrokeColor(HexColor('#1B5E20'))
-    # c.circle(photo_x, photo_y, photo_radius, fill=0)
-
+    c.setFillColor(white)
+    c.circle(photo_x, photo_y, photo_radius, fill=1)
+    c.setStrokeColor(HexColor('#1B5E20'))
+    c.circle(photo_x, photo_y, photo_radius, fill=0)
     photo_path = cnd.get("photo")
-    print("PHOTO PATH:", photo_path)
-    print("EXISTS:", os.path.exists(photo_path))
 
-    if photo_path and os.path.exists(photo_path):
+    if photo_path:
+        abs_photo_path = os.path.join(os.getcwd(), photo_path)
+
+    if os.path.exists(abs_photo_path):
         c.drawImage(
-        photo_path,
-        photo_x - photo_radius,
-        photo_y - photo_radius,
-        2 * photo_radius,
-        2 * photo_radius,
-        preserveAspectRatio=True,
-        mask="auto",
-    )
+            abs_photo_path,
+            photo_x - photo_radius,
+            photo_y - photo_radius,
+            2 * photo_radius,
+            2 * photo_radius,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
     else:
-        print("PHOTO NOT FOUND:", photo_path)
+        print("PHOTO NOT FOUND:", abs_photo_path)
+
+
 
     # Text
     c.setFont("Helvetica-Bold", 9)
