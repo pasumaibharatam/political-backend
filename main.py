@@ -166,7 +166,7 @@ def generate_idcard(mobile: str):
     bar_width = 10 * mm
 
     # Background
-    c.setFillColor(HexColor('#388E3C'))
+    c.setFillColor(HexColor('#1B5E20'))
     c.rect(0, 0, bar_width, height, fill=1, stroke=0)
     c.rect(width - bar_width, 0, bar_width, height, fill=1, stroke=0)
 
@@ -183,10 +183,10 @@ def generate_idcard(mobile: str):
     photo_x = bar_width + 20 * mm
     photo_y = height / 2
 
-    c.setFillColor(white)
-    c.circle(photo_x, photo_y, photo_radius, fill=1)
-    c.setStrokeColor(HexColor('#1B5E20'))
-    c.circle(photo_x, photo_y, photo_radius, fill=0)
+    # c.setFillColor(white)
+    # c.circle(photo_x, photo_y, photo_radius, fill=1)
+    # c.setStrokeColor(HexColor('#1B5E20'))
+    # c.circle(photo_x, photo_y, photo_radius, fill=0)
 
     photo_path = cnd.get("photo")
     print("PHOTO PATH:", photo_path)
