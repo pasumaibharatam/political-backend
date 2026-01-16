@@ -13,6 +13,9 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ===================== APP =====================
 app = FastAPI()
@@ -88,14 +91,22 @@ async def register(
     membership_no = generate_membership_no()
 
     # ---------- Save photo (ONLY filename in DB) ----------
-    photo_filename = ""
-    if photo:
-        ext = os.path.splitext(photo.filename)[1]
-        photo_filename = f"{mobile}{ext}"
+    photo_filename = None
+    
+    if photo and photo.filename:
+        _, photo_ext = os.path.splitext(photo.filename)   # <-- THIS LINE CREATES photo_ext
+    
+        # fallback if extension missing
+        if not photo_ext:
+            photo_ext = ".jpg"
+    
+        photo_filename = f"{mobile}{photo_ext}"
         photo_path = os.path.join(UPLOAD_DIR, photo_filename)
-
+    
         with open(photo_path, "wb") as buffer:
             shutil.copyfileobj(photo.file, buffer)
+
+
 
     candidate_doc = {
         "membership_no": membership_no,
@@ -173,23 +184,29 @@ def generate_idcard(mobile: str):
     photo_x = bar_width + 20 * mm
     photo_y = height / 2
 
-    photo_file = cnd.get("photo")
+    photo_filename = cnd.get("photo")
 
-    if photo_file:
-        abs_photo_path = os.path.join(os.getcwd(), UPLOAD_DIR, photo_file)
+    if photo_filename:
+        abs_photo_path = os.path.join(UPLOAD_DIR, photo_filename)
 
-    if os.path.exists(abs_photo_path):
-        c.drawImage(
-            abs_photo_path,
-            photo_x - photo_radius,
-            photo_y - photo_radius,
-            2 * photo_radius,
-            2 * photo_radius,
-            preserveAspectRatio=True,
-            mask="auto",
-        )
+        print("PHOTO PATH:", abs_photo_path)
 
-# draw ONLY border (no fill)
+        if os.path.exists(abs_photo_path):
+            c.drawImage(
+                abs_photo_path,
+                photo_x - photo_radius,
+                photo_y - photo_radius,
+                2 * photo_radius,
+                2 * photo_radius,
+                preserveAspectRatio=True,
+                mask="auto",
+            )
+        else:
+            print("❌ PHOTO NOT FOUND")
+    else:
+        print("❌ PHOTO FIELD EMPTY")
+
+    # draw border last
     c.setStrokeColor(HexColor("#1B5E20"))
     c.setLineWidth(1)
     c.circle(photo_x, photo_y, photo_radius, fill=0)
