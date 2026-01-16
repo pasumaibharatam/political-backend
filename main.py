@@ -173,22 +173,26 @@ def generate_idcard(mobile: str):
     photo_x = bar_width + 20 * mm
     photo_y = height / 2
 
-    c.setFillColor(white)
-    c.circle(photo_x, photo_y, photo_radius, fill=1)
-
     photo_file = cnd.get("photo")
+
     if photo_file:
         abs_photo_path = os.path.join(os.getcwd(), UPLOAD_DIR, photo_file)
-        if os.path.exists(abs_photo_path):
-            c.drawImage(
-                abs_photo_path,
-                photo_x - photo_radius,
-                photo_y - photo_radius,
-                2 * photo_radius,
-                2 * photo_radius,
-                preserveAspectRatio=True,
-                mask="auto",
-            )
+
+    if os.path.exists(abs_photo_path):
+        c.drawImage(
+            abs_photo_path,
+            photo_x - photo_radius,
+            photo_y - photo_radius,
+            2 * photo_radius,
+            2 * photo_radius,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
+
+# draw ONLY border (no fill)
+    c.setStrokeColor(HexColor("#1B5E20"))
+    c.setLineWidth(1)
+    c.circle(photo_x, photo_y, photo_radius, fill=0)
 
     # Text
     c.setFont("Helvetica-Bold", 9)
