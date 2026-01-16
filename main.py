@@ -18,7 +18,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 app = FastAPI()
 
 pdfmetrics.registerFont(UnicodeCIDFont("HeiseiMin-W3"))
-pdfmetrics.registerFont(TTFont("NotoTamil", "fonts/NotoSansTamil-Regular.ttf"))
+#pdfmetrics.registerFont(TTFont("NotoTamil", "fonts/NotoSansTamil-Regular.ttf"))
 # ===================== CORS =====================
 app.add_middleware(
     CORSMiddleware,
@@ -171,7 +171,7 @@ def generate_idcard(mobile: str):
     c.rect(bar_width, 0, width-2*bar_width, height, fill=1, stroke=0)
 
     # Party Name
-    c.setFont("NotoTamil", 14)
+    c.setFont("HeiseiMin-W3", 12)
     c.setFillColor(HexColor('#1B5E20'))
     c.drawCentredString(width/2, height-10*mm, "பசுமை பாரத மக்கள் கட்சி")
 
@@ -228,7 +228,7 @@ def generate_idcard(mobile: str):
         c.setFont("NotoTamil", 10)
         c.setFillColor(HexColor('#1B5E20'))
         c.drawCentredString(width/2, height-15*mm, "சுற்றுச்சூழல் • சமத்துவம் • சமூக நீதி")
-        c.setFont("Helvetica", 7)
+        c.setFont("HeiseiMin-W3", 7)
         c.drawCentredString(width/2, 5*mm, "Website: www.pasumaiparty.in | Contact: 9876598765") 
     
         # Save and return
