@@ -115,7 +115,8 @@ async def register(
         "address": address,
         "voter_id": voter_id,
         "aadhaar": aadhaar,
-        "photo": f"/uploads/{photo_filename}" if photo else "",
+        "photo": os.path.join(UPLOAD_DIR, photo_filename)
+,
               
     }
 
@@ -187,18 +188,22 @@ def generate_idcard(mobile: str):
     c.setStrokeColor(HexColor('#1B5E20'))
     c.circle(photo_x, photo_y, photo_radius, fill=0)
 
-    if cnd.get("photo"):
-        real_path = os.path.abspath(cnd["photo"].lstrip("/"))
-        if os.path.exists(real_path):
-            c.drawImage(
-                real_path,
-                photo_x - photo_radius,
-                photo_y - photo_radius,
-                2 * photo_radius,
-                2 * photo_radius,
-                preserveAspectRatio=True,
-                mask="auto",
-            )
+    photo_path = cnd.get("photo")
+    print("PHOTO PATH:", photo_path)
+    print("EXISTS:", os.path.exists(photo_path))
+
+    if photo_path and os.path.exists(photo_path):
+        c.drawImage(
+        photo_path,
+        photo_x - photo_radius,
+        photo_y - photo_radius,
+        2 * photo_radius,
+        2 * photo_radius,
+        preserveAspectRatio=True,
+        mask="auto",
+    )
+    else:
+        print("PHOTO NOT FOUND:", photo_path)
 
     # Text
     c.setFont("Helvetica-Bold", 9)
